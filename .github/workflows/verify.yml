@@ -7,4 +7,4 @@ permissions:
   contents: read
 jobs:
   verify:
-    uses: FreeTWAI-AI/.github/.github/workflows/verify-template.yml@fb74d43e623f05c849664da6f2f1a630de25a898
+    uses: FreeTWAI/.github/.github/workflows/verify-template.yml@fb74d43e623f05c849664da6f2f1a630de25a898

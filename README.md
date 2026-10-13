@@ -39,7 +39,9 @@ node src/cli.mjs http://127.0.0.1:4310/api/v1 maker
 Verify against an independently selected source commit before publishing:
 
 ```sh
-node scripts/verify-consumer-libraries.mjs FreeTWAI/freedom-agent-kit EXPECTED_PLATFORM_SHA --source-root /path/to/freedom-platform
+node scripts/verify-consumer-libraries.mjs FreeTWAI-AI/freedom-agent-kit EXPECTED_PLATFORM_SHA --source-root /path/to/freedom-platform
 ```
+
+The repository argument is the historical provenance identity required by this pinned verifier and `consumer-libraries.lock.json`. Current GitHub and clone URLs use `FreeTWAI`.
 
 Once that exact source is publicly available, `--remote` can replace `--source-root /path/to/freedom-platform`. Local source checks use committed Git objects, not uncommitted working-tree files.

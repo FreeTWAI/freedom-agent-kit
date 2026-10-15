@@ -1,0 +1,252 @@
+# Contract release verification and development context
+
+This directory defines the development schemas for the unified-foundation governance work. The first implementation verifies legacy preview pins and signed ReleaseSet pins locally. It does **not** configure a trusted publisher, GitHub protection, runtime authorization, or production signing.
+
+The source schemas are in [schemas](schemas). The shared implementation is in [packages/contribution-tools](../packages/contribution-tools); consumers receive exact committed copies through the existing export command. Do not create a second consumer-owned verifier or change the preview bundle to enable execution.
+
+## Local checks
+
+```sh
+npm run test:governance
+npm run contracts:build
+git diff --exit-code -- contracts/preview/v1 packages/sdk
+```
+
+The tests use synthetic repositories, ephemeral in-memory signing keys and temporary files. They do not connect to a database, provider, R2 or GitHub. Existing preview bytes are used for compatibility tests.
+
+## Development entrypoints
+
+```sh
+node scripts/freedom.mjs prepare --base-ref origin/main --scope assets,member-card
+node scripts/freedom.mjs context --base-ref origin/main --paths apps/portal-web/src/modules/Membership.tsx
+node scripts/freedom.mjs verify --base-ref origin/main --report .freedom/reports/current.json
+```
+
+Run from the repository root with Node 24. `prepare` writes an ignored, task-scoped context bundle; `context` prints the full applicable content when it fits a v1 bundle, or a chunk manifest for larger scopes; `verify` runs the implemented local checks and optionally saves a report. Exit codes are 0 (complete for the requested local scope), 1 (failed), and 2 (required evidence unavailable). None of these results is a trusted merge or execution authorization.
+
+Context contains repository/base/head, a hashed worktree identity, branch, staged and unstaged changes, untracked source, root and applicable nested AGENTS instructions, and both baseline and changed policy text. Contract pins/ReleaseSets include their public version information; dependency manifests are fingerprinted without copying potentially private registry settings. The bundle records `publisher_trust=unverified` and `library_usage=not_checked`, never that an Agent understood it. Regenerate after changing scope, base, lock, branch/worktree, or session; no receipt is committed into a shared JSON file.
+
+### Complete context across bounded chunks
+
+Small context still uses `freedom.coding-context/v1`, with the existing 512,000-byte content limit and a 512,000-byte serialized output limit. When the applicable context exceeds either limit, `prepare` and `context` automatically write a `freedom.coding-context-manifest/v1` and all its chunks into the ignored `.freedom/context/<task>/<delivery>/` directory. Scope is unchanged: baseline and candidate descriptors, nested instructions, reverse dependencies, and unknown-path full fallback are all retained. The manifest lists both revisions of every applicable instruction, their source digests, the baseline/candidate delta, selected baseline/candidate modules and dependencies, unknown paths, public contract content, and fingerprints of dependency manifests without disclosing their contents.
+
+For a repo-wide change, or a fresh worktree/session, start from that worktree's root:
+
+```sh
+node scripts/freedom.mjs prepare --base-ref <exact-baseline-sha> --paths AGENTS.md
+node scripts/freedom.mjs context --manifest <returned-context_path> --chunk 0
+node scripts/freedom.mjs context --manifest <returned-context_path> --check complete
+```
+
+Read **every** chunk index from zero through `chunk_count - 1`, then run the completeness check. A manifest or the first fragment alone is not the complete rules. `prepare` prints the concrete first-chunk and completeness commands; `context` without `--manifest` prints the complete manifest. `--manifest` cannot be combined with a different base, path or scope: regenerate with `prepare` when any of those change. New subagents and other worktrees must prepare their own context; copying a delivery from another worktree is rejected.
+
+Every fragment is at most 65,536 bytes of intact UTF-8, including the original BOM if present. Every manifest and serialized chunk is at most 512,000 bytes. A delivery is limited to 1,024 sources, 1,024 chunks and 32,000,000 content bytes; each source read retains the existing 2,000,000-byte file limit. Oversized candidates fail explicitly instead of truncating or silently dropping rules. Public version-content projections have their own content digest alongside the original source digest.
+
+Chunk reads and completeness checks reconstruct the full applicable context from the current repository, baseline, HEAD, branch and worktree fingerprint. They verify the exact manifest and **all** expected chunks before returning anything, rejecting missing, modified, reordered, stale or foreign-worktree artifacts. Paths are generated by the tool and use the existing ignored-artifact writer and bounded nonsymlink reader. Chunks are written first and the manifest last; a partial failed write does not announce a complete delivery. The workspace is checked again before publication and after reading.
+
+The completeness result means that the current local artifacts contain the full selected rules; it does not assert that a human or agent has read or understood them. `publisher_trust=unverified`, `library_usage=not_checked` and local assurance remain unchanged. Missing instructions and unknown surfaces remain blockers with exit code 2, even if every available chunk is intact. `verify` uses the same full rule collection and validation without retaining document text, so a legitimate large context does not prevent suite selection; this does not change suite requirements or trust.
+
+Module descriptors use exact paths or directory `/**` patterns. Impact is the union of baseline and candidate descriptors plus reverse dependencies. Deleting, renaming or shrinking a descriptor cannot subtract baseline scope/tests. Unknown non-document paths select all modules and require a full fallback; missing baseline governance, missing instructions and unmapped surfaces remain explicit blockers. Descriptor references check file existence, **not** actual route registration or ACL behavior.
+
+The CI selector also counts a descriptor's own path when it is not already
+covered. Keep that implicit entry within the existing 64-path schema bound;
+64 unrelated explicit paths plus an uncovered descriptor is invalid, not a
+reason to raise the limit or ignore the descriptor. Files wholly owned in one
+dedicated directory may use its existing `/**` form without dropping coverage.
+The member-card license directory uses that form instead of four individual
+license entries. This broadens conservative impact coverage only; it changes
+neither license bytes, runtime permissions nor baseline/candidate test unions.
+
+The descriptors do not constitute a complete runtime registration audit. The local suite adapters use fixed Node arguments, never descriptor shell commands or package hooks. `governance.unit` runs the contribution-tools tests without database credentials. Runtime adapters require operator-provisioned, disposable PostgreSQL and an **explicit** `TEST_DATABASE_URL` for the CLI, or `testDatabaseUrl` for the library; there is no database discovery or default fallback. Accepted URLs name an `fp_*` database on loopback, optionally with a single absolute Unix-socket `host` parameter. Passwords, remote hosts, duplicate/query connection overrides and non-test database names are rejected. This admission check does not establish that a server is disposable: the operator must provide an isolated test-only server, never a production service that happens to have a matching name. Runtime tests own fresh `fp_*` schemas/roles and their teardown; forced termination can leave test data to clean up on that disposable server.
+
+The fixed registry in `runtime-suites.mjs` maps these existing IDs:
+
+| Suite | Direct runtime test files (without `.test.ts`) |
+| --- | --- |
+| `runtime.command-core` | `command-core` |
+| `runtime.resource-scopes` | `resource-scopes` |
+| `runtime.scoped-member-command` | `scoped-member-command` |
+| `runtime.avatar` | `avatar`, `image-runtime`, `image-cloudflare` |
+| `runtime.member-card` | `member-ecard`, `member-directory`, `social-links`, `member-card-qr` |
+| `runtime.work` | `flows`, `benefits`, `co-creation` |
+| `runtime.work-privacy` | `work-privacy` |
+| `runtime.personal-content` | `personal-content`, `community-relations`, `community-search`, `work-privacy` |
+| `runtime.preview-protocol` | `preview-protocol` |
+| `runtime.full` | All baseline runtime files **plus newly added** direct `tests/runtime/*.test.ts` files |
+
+`e2e.harness` is a separate fixed adapter. It is not a runtime file, so it is not a row in the table above. It runs exactly `scripts/run-e2e.test.mjs` with the same bounded Node reporter, the 60-second non-runtime budget, and no database environment. Neighboring `scripts/**/*.test.mjs` files are not discovered. Deleting that baseline is `suite_files_unavailable` (`not_run`), not a pass. An empty file, a zero-test run, or any skip, TODO, cancellation, or failure does not pass. The verifier report accepts that one `scripts/run-e2e.test.mjs` path and no other `scripts/` test path. This suite checks the Playwright orchestrator. It does not launch a browser. CI's `ui-e2e` job runs `npm run test:e2e` after `npm run build`; that job is the browser evidence, and `verify` does not substitute for it.
+
+| Suite | Fixed baseline | Budget |
+| --- | --- | --- |
+| `e2e.harness` | `scripts/run-e2e.test.mjs` only | 60 seconds, no database |
+
+`runLocalSuite(root, id, {testDatabaseUrl})` remains available from `verify.mjs`; `runLocalSuites(root, ids, {testDatabaseUrl})` and the default `verifyWorkspace(options, {testDatabaseUrl})` batch overlapping runtime selections into **one** Node/tsx invocation. Each file executes once even when full and subset IDs are selected; reports project each suite's file/case evidence from that invocation. There is no persistent cache across calls or source changes. Deleting a baseline file or a fixed subset file cannot become green; consumers without these producer suites receive `suite_files_unavailable`. New direct runtime test files are discovered automatically without first adding them to the baseline list. The tsx loader comes from the installed tooling's dependency resolution; no npm script is executed.
+
+The subprocess environment contains only the existing small OS/locale allowlist and, for runtime alone, the validated explicit test URL. Home/provider credentials, PG defaults, `DATABASE_URL`, Node preload hooks and parent test context are not inherited. Execution is bounded to 60 seconds for non-runtime adapters (`governance.unit`, the consumer adapters, and `e2e.harness`) and 15 minutes for runtime, with a 16 MB combined stdout/stderr cap; a library caller may only shorten the timeout. POSIX timeout kills the test process group (Windows kills the runner; use an external job/container boundary there). Timeout, process failure, malformed/incomplete reports, zero tests, skips, TODOs and cancellations cannot pass. Missing DB/loader/files and unknown IDs remain `not_run`; governance can still run when runtime has no DB.
+
+A custom reporter consumes [Node test events](https://nodejs.org/docs/latest-v24.x/api/test.html#event-testsummary). Reports record selected paths, per-file counts and case-identity digests/statuses, reconciling case totals with file and global counts. Case identities hash source location and runner IDs, not potentially sensitive test names; errors, assertions, stdout/stderr and the database URL are omitted. The evidence digest covers the sanitized structured reporter output. Aborted/malformed runs retain selected paths but cannot claim complete case evidence. This reporter is local, candidate-controlled code: structured events avoid accidental stdout/TAP confusion, **not adversarial spoofing**. These records are not authenticated host observations and are never fed into `verifyHostCandidate` automatically. The runner is not a security sandbox: local tests retain the current OS user's filesystem/network rights; untrusted PR code requires an isolated, secret-free runner and an independent harness/publisher.
+
+Separate `suite_events` retain describe/suite statuses, because Node's test counts exclude skipped suites. Any skipped/TODO/cancelled/failed suite also fails verification; suites never inflate the real test count. New approved runtime files should be added to the central baseline list to retain deletion protection in later revisions, even though new files run automatically on discovery.
+
+Runtime registration/behavior coverage and missing baseline governance remain explicit blockers even after every selected test passes. This increment does not close the actual surface-registration audit or enable trusted merge/execution authorization.
+
+The reviewed `consumer.agent-kit` adapter runs the real consumer's direct
+`tests/*.test.mjs` files with the same bounded Node reporter and a fixed
+`tests/workspace.test.mjs` deletion-protected baseline. It has no TypeScript
+loader, package hooks or database environment; it uses the 60-second non-runtime
+budget. New consumer tests are discovered, and missing/empty/skipped tests fail
+closed. This is a local consumer regression check, not Agent execution authority,
+an authenticated upstream release, or a replacement for surface auditing.
+
+During initial adoption, running against an `origin/main` without descriptors correctly returns `baseline_governance_unavailable`. Do not change the base to hide that result in PR evidence. Synthetic repositories with an established baseline test the successful path. The export command also supplies the same central context library and a thin `scripts/freedom.mjs` to consumers; each consumer must supply reviewed module descriptors and actual suite adapters.
+
+An explicit export, after committing all source files, remains:
+
+```sh
+node scripts/export-contract-bundle.mjs /absolute/path/to/consumer
+```
+
+The destination must already exist and must not overlap the producer. Export checks committed bytes and destination paths before writing. It copies the preview bundle, central tooling and thin consumer entrypoints, then writes the existing v1 lock last. It does not remove unrelated files, commit, open a PR or push. Interruption can leave a partial export; rerun the same committed export and verify before using it.
+
+In a consumer, `node scripts/verify-contracts.mjs` returns structured JSON and exits 0 for the requested local verification, 1 for invalid input/integrity, or 2 for unavailable trust/source. `--remote` additionally compares v1 bytes with the exact pinned GitHub commit. v2 does not accept `--remote` as a replacement for publisher approval.
+
+## ReleaseSet and proof profile
+
+`freedom.release-set/v1` binds source SHA, artifact bytes/digests, contract families, libraries, policy revision, generator, fixtures and runtime profiles. Every artifact must be classified and every reference must resolve. Paths, counts and total bytes are bounded; absolute/traversal/Windows-special paths, case collisions, symlinks, hardlinks, extra files and missing files are rejected.
+
+The digest profile is `sha256-exact-bytes/v1`: SHA-256 of the exact UTF-8 manifest bytes. The authoring helper sorts object keys and artifact paths for repeatability, but this encoding is **not RFC 8785**. It does not change historical preview/SQL digests or select the future execution JCS implementation.
+
+`freedom.release-proof/v1` is detached. Ed25519 signs the UTF-8 bytes of `freedom.release-set-signature/v1` followed by one NUL byte and the exact manifest bytes. The signature uses unpadded canonical base64url. The public key must be an Ed25519 public JWK; no private key, HMAC key, arbitrary algorithm, jku or x5u is accepted. The implementation uses Node's native Ed25519 verification, with a null algorithm as required by its [crypto API](https://nodejs.org/docs/latest-v24.x/api/crypto.html#cryptoverifyalgorithm-data-key-signature-callback).
+
+This signature proves possession of an approved publisher key over a specific manifest. It does not itself prove a GitHub workflow ran. Workflow/provenance enforcement, secure signer custody and independent approval/revocation publication remain separate GOV-C/D work.
+
+## Independent trust input
+
+`verifyContractPin` accepts an operator-supplied `trustProfile`; it never discovers one in the candidate repository. The profile identifies environment, version, approved publisher keys, supported/withdrawn manifest digests and policy revisions. It expires, with a default maximum freshness window of 24 hours. The operator must obtain it from an authenticated, independently managed source. A self-consistent consumer hash and self-signed key are not approval.
+
+There is no production trust profile or private signing key in this repository. The bootstrap CLI intentionally has no `--trust` flag: v2 is unavailable there until a trusted host injects the approved policy through the library API. `fixture` environment results remain fixture evidence; every result has `assurance_level=local` and `execution_authorized=false`.
+
+The verifier checks only the supplied artifact set and policy. A build analyzer must independently collect actual library resolution records; `verifyLibraryResolution` validates those records but does not attest who collected them. `library_usage=not_checked` on a pin result is intentional.
+
+## Boundaries
+
+The governance validator implements only the fixed schema keyword subset used here and rejects unknown keywords. It is not a general JSON Schema engine and does not load candidate schemas or code. JSON parsing rejects duplicate keys, invalid UTF-8/surrogates, unsafe numbers and excessive depth/size. Errors expose stable codes, not input fragments or secret-bearing paths.
+
+Trusted CI must run the fixed verifier against an isolated, immutable checkout with no production secrets. Filesystem checks do not make a concurrently hostile workspace a sandbox. Local candidate tests and reports cannot publish trusted CI status. No new runtime endpoints, tables or execution permissions are enabled by this package.
+
+## GitHub Free repository CI review
+
+After the repository transfer, the central repository uses maintainer review of
+CI controls. [.github/CODEOWNERS](../.github/CODEOWNERS) assigns both
+`@teddashh` and `@detna-vibe-coding` to the ownership file itself, workflows,
+local actions, selectors/runners, governance tooling, module descriptors and
+the configuration those entrypoints load. Both accounts have repository admin
+access, checked on 2026-10-13. Ordinary product UI files and product test files
+are not covered by a blanket owner rule.
+
+The 2026-10-14 15:09 UTC readback of repository ruleset `main-baseline`
+(`25011111`) confirms `require_code_owner_review` is enabled, with at least one
+approval, stale-review dismissal, approval after the latest push, resolved review
+threads, strict App-bound `verify`/`CodeQL` checks and no bypass actors. GitHub
+uses the ownership file from the PR's base branch. The dated observation is in
+[`current-state.json`](../docs/platform-plan/execution/unified-foundation/current-state.json)
+under `governance_current`; the older organization workflow pins are historical.
+Changes to CI controls still require an eligible non-author code owner. See
+[GitHub's code owner rules](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners).
+
+This provides review enforcement for changes to CI controls. Required check
+names and the reviewed runner's `job.workflow_sha` checkout do not restore the
+old Enterprise organization rule that required a workflow from a fixed source.
+Reviewers must inspect changes to workflow/selector/runner dependencies and
+their exact-head evidence; a candidate cannot establish independent publisher
+trust by supplying a report with the right name.
+
+Candidate application and test code still execute on the test runner. This is
+not an independent sandbox, an authenticated observation publisher, or proof
+that candidate tests cannot forge results. The local GOV-C boundary and future
+publisher profiles below retain their existing limits. This central observation
+does not establish the current protection of consumer repositories.
+
+## Host-owned verification boundary (local GOV-C increment)
+
+`packages/contribution-tools/trusted-ci.mjs` provides `verifyHostCandidate` for a
+future independently managed host. It is deliberately absent from the consumer
+export list and local CLI. The host must approve and load an immutable verifier
+installation **before** accepting candidate data. `installedVerifierDigest()`
+fingerprints the complete static module/schema import closure; comparing that
+digest inside an already compromised process cannot establish trust. The host
+also owns the Git executable, environment, object store, policy and observation
+transport. Candidate runners must have no write access to any of them.
+
+The input has exactly five fields:
+
+- `objectRepository`: absolute path to a host-owned, complete bare Git object
+  repository populated through a separately authenticated, bounded acquisition
+  step. Do not point this at a candidate-created bare repository or copy its
+  configuration. This library performs no fetch or checkout. It disables replace
+  refs, ambient Git configuration and lazy fetches, rejects grafts/alternates,
+  and applies bounded Git subprocess time/output limits.
+- `binding`: independently acquired repository, positive PR number, run ID,
+  exact base/head/candidate commits and candidate tree. A head candidate must
+  contain the base; an integration candidate must have exactly the base and head
+  as its ordered parents. This is a narrow local topology profile, not a claim
+  that every GitHub merge-queue topology is supported.
+- `policyBytes` and `expectedPolicy`: independently approved exact policy bytes
+  and their revision/SHA-256. `freedom.trusted-ci-policy/v1` contains repository,
+  source repository/commit/ReleaseSet digest, verifier commit/install digest,
+  workflow identity/commit/publisher, nonempty required and fallback suite lists,
+  and the allowed suite ID/harness-digest registry. Unknown keys and arbitrary
+  commands are rejected. The host must independently enforce policy freshness
+  and revocation; candidate policy files cannot update this input.
+- `observations`: records from an authenticated host adapter for an isolated
+  runner, **never** JSON artifacts supplied by the candidate. Each record binds
+  the full repository/PR/run/base/head/candidate/tree/source/ReleaseSet/policy/
+  verifier tuple, expected workflow publisher/revision and harness digest. A
+  positive real test count, success, and zero failures/skips/cancellations are
+  required. The evidence digest identifies the adapter's retained evidence; it
+  is not a signature or proof of its origin. Missing suites return `unavailable`;
+  duplicate/unexpected suites, changed bindings and invalid results are rejected.
+
+The verifier recomputes changed paths from immutable tree entries, including
+deletions, renames and mode-only changes. It unions baseline and candidate module
+descriptors and reverse dependencies using the installed selector. Candidate
+descriptor changes cannot subtract baseline tests or host-required suites;
+paths without baseline ownership add host fallback suites even when a new or
+expanded candidate descriptor claims them. Candidate descriptors are bounded data,
+not executable policy. The candidate's v2 lock and manifest must match the
+host-approved source and ReleaseSet digest. Actual immutable vendor blobs must
+match the manifest/lock artifact paths, exact file set, byte counts and digests;
+the detached proof must match its lock digest. This step does not replace the
+existing detached-signature/publisher verification, actual source approval, library
+resolution, route registration or behavioral tests; the independent host must
+require the appropriate harnesses when integrating those checks.
+
+See `test/trusted-ci.test.mjs` under contribution-tools for the exact synthetic
+host policy and adapter record shapes. The tests exercise fake `echo pass`
+workflows/reports, a replaced candidate verifier, descriptor deletion/shrinking,
+empty/unknown suites, zero/skipped/cancelled/failing tests, same-name wrong-source
+workflows, changed harness/policy/base/run/tree/source, Git graph overrides and
+candidate symlinks. Test fixtures mint observations directly to test the local
+boundary; they do not authenticate an external runner.
+
+Reports retain `assurance_level=local`, `publisher_trust=unverified`,
+`merge_authorized=false` and `execution_authorized=false`, even when all supplied
+host observations pass this boundary. There is no authenticated CI adapter,
+isolated runner provisioning, trusted check publication, GitHub protection,
+production signing or completed GOV-C/D enforcement in this increment. Existing
+local CLI and preview/v1 compatibility remain unchanged; this host-only profile
+requires v2 source pins and does not silently promote preview/v1 to trusted CI.
+
+## Implementation evidence
+
+On 2026-10-02, the first local implementation passed 88 Node tests with no skips. The existing preview build regenerated 32 operations and 9 bundle artifacts with no changes under `contracts/preview/v1` or `packages/sdk`.
+
+The context increment passed 106 Node tests, zero skips, including baseline/candidate scope, deleted rules, nested context, branch/worktree changes, stale workspace/base, secret-free subprocess environment, bounded report writes, zero/skipped/forged test output and three independently initialized synthetic consumer repositories. Existing contract tests passed 659 cases with 4 pre-existing skips (clock cases with fewer than three schema paths). These fixtures do not mean the real Agent Kit, client or other consumer repos have been upgraded.
+
+The host-boundary increment passed 119 Node governance tests, zero skips,
+including 13 new synthetic bare-repository/host-observation cases. The local
+profile covers immutable candidate binding, pinned installed code/policy,
+baseline-owned fallback and exact vendor integrity. It does not supply the
+authenticated observations or GitHub enforcement described above.
+
+The evidence supports the local portions of GOV-01/02/03/22, path/input safety and v1 compatibility; it does not mark those full product requirements passed. Release-proof purpose tests are not execution-token tests. Three real consumer checkouts, TS/Rust conformance, Windows/macOS, trusted GitHub checks, production publishers and runtime rejection remain unverified. All source acceptance rows remain `not_run` until their complete required evidence exists.

@@ -1,7 +1,7 @@
 {
   "protocol": "freedom.preview/v1",
-  "revision": "0.3.0",
-  "protocol_sha256": "fe2ee45447f4a5e92c10e22307dee3b380d028acca04bac5278d3aeca0da7b3e",
+  "revision": "0.4.1",
+  "protocol_sha256": "41378c3b723f739cefdf8c53a82238b1e5d69cc13cdbf63b33a80d8080c807b2",
   "operations": [
     "getProtocol",
     "getHealth",
@@ -34,6 +34,7 @@
     "reviseCampaign",
     "recordShare",
     "listWorks",
+    "listWorksPage",
     "getDashboard"
   ],
   "authentication": "member_session_csrf",

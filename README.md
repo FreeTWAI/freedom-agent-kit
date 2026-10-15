@@ -34,14 +34,14 @@ node src/cli.mjs http://127.0.0.1:4310/api/v1 maker
 
 ## Shared member workspace
 
-`src/index.mjs` now imports the central member-workspace implementation from `vendor/freedom-libraries`. It executes the existing five preview read operations and excludes the session envelope. The preview contract pin and bundle remain unchanged. `consumer-libraries.lock.json` records the separate exact source commit and bytes; this lock does not approve a release or prove runtime coverage.
+`src/index.mjs` imports the central member-workspace implementation from `vendor/freedom-libraries`. It executes the existing five preview read operations and excludes the session envelope. The preview contract is pinned separately; its bounded Work page operation does not change the complete legacy Work list used by this loader. `consumer-libraries.lock.json` preserves the shared library's separate exact source commit and bytes; this lock does not approve a release or prove runtime coverage.
 
 Verify against an independently selected source commit before publishing:
 
 ```sh
-node scripts/verify-consumer-libraries.mjs FreeTWAI-AI/freedom-agent-kit EXPECTED_PLATFORM_SHA --source-root /path/to/freedom-platform
+node scripts/verify-consumer-libraries.mjs FreeTWAI/freedom-agent-kit EXPECTED_PLATFORM_SHA --source-root /path/to/freedom-platform
 ```
 
-The repository argument is the historical provenance identity required by this pinned verifier and `consumer-libraries.lock.json`. Current GitHub and clone URLs use `FreeTWAI`.
+The verifier accepts the current `FreeTWAI` repository identity while preserving the historical identity recorded in the library lock. Use that library's independently selected source SHA, not the preview bundle's source SHA.
 
 Once that exact source is publicly available, `--remote` can replace `--source-root /path/to/freedom-platform`. Local source checks use committed Git objects, not uncommitted working-tree files.

@@ -129,7 +129,12 @@ async function collectContext({ repositoryRoot, baseRef = 'origin/main', request
     const pkg = parseJson(await readBounded(workspace.root, 'package.json'));
     // Reviewed existing scoped consumer names; this labels local context, never
     // authenticates a remote repository or grants publisher trust.
-    const scopedNames = { '@freetwai/agent-kit': 'freedom-agent-kit', '@freetwai/freedom-storefront': 'freedom-storefront' };
+    const scopedNames = {
+      '@freetwai/agent-kit': 'freedom-agent-kit',
+      '@freetwai/freedom-storefront': 'freedom-storefront',
+      '@freetwai/freedom-growth-automation': 'freedom-growth-automation',
+      '@freetwai/freedom-skill-registry': 'freedom-skill-registry',
+    };
     const name = Object.hasOwn(scopedNames, pkg.name) ? scopedNames[pkg.name] : pkg.name;
     check(typeof name === 'string' && /^freedom-[a-z-]+$/.test(name) && !/[\r\n]/.test(name), 'repository_identity_required');
     repository = 'FreeTWAI/' + name;

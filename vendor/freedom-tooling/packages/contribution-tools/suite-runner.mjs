@@ -466,8 +466,12 @@ function partitionCheck(value, code) { if (!value) throw Error(code); }
 export async function runtimeSourceManifest(root) {
   const git = spawnSync('git', ['rev-parse', '--verify', 'HEAD'], { cwd: root, env: verificationEnvironment(), encoding: 'utf8', timeout: 5000, maxBuffer: 4096 });
   const candidate_commit = git.stdout?.trim();
-  const clean = spawnSync('git', ['diff', '--quiet', 'HEAD', '--'], {cwd:root,env:verificationEnvironment(),timeout:5000,maxBuffer:4096});
-  partitionCheck(clean.status === 0, 'runtime_source_changed');
+  // Untracked source can be imported by a committed test without appearing in
+  // its manifest. Only ignored artifacts may remain outside the candidate.
+  const clean = spawnSync('git', ['--no-optional-locks', '-c', 'core.fsmonitor=false', 'status',
+    '--porcelain=v1', '-z', '--untracked-files=all', '--ignore-submodules=none'],
+    {cwd:root,env:verificationEnvironment(),timeout:5000,maxBuffer:4096});
+  partitionCheck(clean.status === 0 && !clean.error && clean.stdout?.length === 0, 'runtime_source_changed');
   partitionCheck(git.status === 0 && /^[a-f0-9]{40}$/.test(candidate_commit), 'runtime_candidate_unavailable');
   const files = await suiteFiles(root, 'runtime.full');
   const full_source_manifest = [];

@@ -1,7 +1,7 @@
 {
   "format": "freedom.contract-pin/v1",
   "source_repository": "FreeTWAI/freedom-platform",
-  "source_commit": "1b1c3c111311659a64ab83fb4ea5683089b10560",
+  "source_commit": "e09fe06f3393c64e04afd6475dd6c427b3dab127",
   "bundle_path": "contracts/preview/v1",
   "protocol": "freedom.preview/v1",
   "protocol_sha256": "41378c3b723f739cefdf8c53a82238b1e5d69cc13cdbf63b33a80d8080c807b2",

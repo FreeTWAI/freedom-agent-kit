@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freetwai.com/contracts/governance/coding-context/v1",
+  "title": "Freedom coding-context development schema",
+  "type": "object",
+  "properties": {
+    "workspace_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "branch": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "publisher_trust": { "const": "unverified" },
+    "library_usage": { "const": "not_checked" },
+    "version_inputs": {
+      "type": "array", "minItems": 0, "maxItems": 32,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["path", "revision", "sha256", "bytes"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "revision": { "enum": ["base", "candidate"] },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "bytes": { "type": "integer", "minimum": 0, "maximum": 2000000 },
+          "content": { "type": "string", "maxLength": 2000000 }
+        }
+      }
+    },
+    "format": {
+      "const": "freedom.coding-context/v1"
+    },
+    "assurance_level": {
+      "const": "local"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+    },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "head_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "workspace_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "requested_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 240,
+        "pattern": "^[-a-zA-Z0-9_./]+$"
+      },
+      "minItems": 0,
+      "maxItems": 4096,
+      "uniqueItems": true
+    },
+    "changed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 240,
+        "pattern": "^[-a-zA-Z0-9_./]+$"
+      },
+      "minItems": 0,
+      "maxItems": 4096,
+      "uniqueItems": true
+    },
+    "module_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+      },
+      "minItems": 0,
+      "maxItems": 1024,
+      "uniqueItems": true
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^[-a-zA-Z0-9_./]+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000000
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000000
+          },
+          "revision": {
+            "enum": [
+              "base",
+              "candidate"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "bytes",
+          "content",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 1024
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+      },
+      "minItems": 0,
+      "maxItems": 1024,
+      "uniqueItems": true
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+      },
+      "minItems": 0,
+      "maxItems": 1024,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "workspace_id", "branch", "version_inputs", "publisher_trust", "library_usage",
+    "format",
+    "assurance_level",
+    "task_id",
+    "repository",
+    "base_commit",
+    "head_commit",
+    "workspace_sha256",
+    "requested_paths",
+    "changed_paths",
+    "module_ids",
+    "documents",
+    "tests",
+    "blockers"
+  ],
+  "additionalProperties": false
+}

@@ -2,7 +2,7 @@
   "openapi": "3.1.1",
   "info": {
     "title": "Freedom implemented member module API subset",
-    "version": "0.3.0",
+    "version": "0.4.1",
     "description": "Member-session module API subset. Registration/onboarding and scoped read-connections have separate interface documents. Public checkout, production OAuth and leased executors are not implemented by this bundle."
   },
   "servers": [
@@ -804,14 +804,37 @@
             "MemberSession": []
           }
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "default": 0
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Implemented preview response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProductList"
+                  "$ref": "#/components/schemas/CatalogPage"
                 }
               }
             }
@@ -1561,7 +1584,30 @@
             "MemberSession": []
           }
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "default": 0
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Implemented preview response",
@@ -1858,6 +1904,76 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured problem; conflict is never automatically retried",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-idempotent-command": false,
+        "x-concurrency": "none"
+      }
+    },
+    "/work-items/page": {
+      "get": {
+        "operationId": "listWorksPage",
+        "summary": "listWorksPage",
+        "security": [
+          {
+            "MemberSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "open"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 2000,
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Implemented preview response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkPage"
                 }
               }
             }
@@ -3076,6 +3192,35 @@
         ],
         "additionalProperties": true
       },
+      "WorkPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Work"
+            },
+            "maxItems": 24
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
       "Dashboard": {
         "type": "object"
       },
@@ -3176,11 +3321,25 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Campaign"
-            }
+            },
+            "maxItems": 50
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "items"
+          "items",
+          "next_offset"
         ],
         "additionalProperties": false
       },
@@ -3196,6 +3355,35 @@
         },
         "required": [
           "items"
+        ],
+        "additionalProperties": false
+      },
+      "CatalogPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "maxItems": 50
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_offset"
         ],
         "additionalProperties": false
       },
@@ -3219,7 +3407,8 @@
       "MemberSession": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "freedom_local_session"
+        "name": "__Host-freedom_session",
+        "description": "HTTPS: Secure, HttpOnly, SameSite=Strict, Path=/ and no Domain. Explicit local HTTP loopback deployments use freedom_local_session instead. Duplicate selected session cookies are rejected."
       }
     }
   }

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freetwai.com/contracts/governance/contract-pin-v1/v1",
+  "title": "Freedom contract-pin-v1 development schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "freedom.contract-pin/v1"
+    },
+    "source_repository": {
+      "enum": ["FreeTWAI/freedom-platform", "FreeTWAI-AI/freedom-platform"]
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "bundle_path": {
+      "const": "contracts/preview/v1"
+    },
+    "protocol": {
+      "const": "freedom.preview/v1"
+    },
+    "protocol_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "format",
+    "source_repository",
+    "source_commit",
+    "bundle_path",
+    "protocol",
+    "protocol_sha256",
+    "bundle_sha256"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freetwai.com/contracts/governance/verifier-report/v1",
+  "title": "Freedom verifier-report development schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "freedom.verifier-report/v1"
+    },
+    "assurance_level": {
+      "const": "local"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+    },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "head_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "workspace_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "unavailable"
+      ]
+    },
+    "scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+      },
+      "minItems": 0,
+      "maxItems": 1024,
+      "uniqueItems": true
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "not_run"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+          },
+          "test_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selected_files": {
+            "type": "array", "minItems": 1, "maxItems": 512, "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^(tests/runtime/[a-z][a-z0-9_-]*\\.test\\.ts|tests/[a-z][a-z0-9_-]*\\.test\\.mjs|packages/contribution-tools/test/[a-z][a-z0-9-]*\\.test\\.mjs|scripts/run-e2e\\.test\\.mjs)$", "maxLength": 240 }
+          },
+          "test_files": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 512,
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "pattern": "^(tests/runtime/[a-z][a-z0-9_-]*\\.test\\.ts|tests/[a-z][a-z0-9_-]*\\.test\\.mjs|packages/contribution-tools/test/[a-z][a-z0-9-]*\\.test\\.mjs|scripts/run-e2e\\.test\\.mjs)$", "maxLength": 240 },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "tests": { "type": "integer", "minimum": 0 },
+                    "passed": { "type": "integer", "minimum": 0 },
+                    "failed": { "type": "integer", "minimum": 0 },
+                    "cancelled": { "type": "integer", "minimum": 0 },
+                    "skipped": { "type": "integer", "minimum": 0 },
+                    "todo": { "type": "integer", "minimum": 0 }
+                  },
+                  "required": ["tests", "passed", "failed", "cancelled", "skipped", "todo"],
+                  "additionalProperties": false
+                },
+                "suite_events": {
+                  "type": "array", "minItems": 0, "maxItems": 20000,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "case_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                      "status": { "enum": ["passed", "failed", "cancelled", "skipped", "todo"] }
+                    },
+                    "required": ["case_sha256", "status"],
+                    "additionalProperties": false
+                  }
+                },
+                "cases": {
+                  "type": "array", "minItems": 0, "maxItems": 20000,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "case_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                      "status": { "enum": ["passed", "failed", "cancelled", "skipped", "todo"] }
+                    },
+                    "required": ["case_sha256", "status"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": ["path", "counts", "cases", "suite_events"],
+              "additionalProperties": false
+            }
+          },
+          "shards": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "properties": {
+                "selected_files": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 512,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(tests/runtime/[a-z][a-z0-9_-]*\\.test\\.ts|tests/[a-z][a-z0-9_-]*\\.test\\.mjs|packages/contribution-tools/test/[a-z][a-z0-9-]*\\.test\\.mjs)$",
+                    "maxLength": 240
+                  }
+                },
+                "evidence_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160,
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+                },
+                "test_files": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 512,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "pattern": "^(tests/runtime/[a-z][a-z0-9_-]*\\.test\\.ts|tests/[a-z][a-z0-9_-]*\\.test\\.mjs|packages/contribution-tools/test/[a-z][a-z0-9-]*\\.test\\.mjs)$",
+                        "maxLength": 240
+                      },
+                      "counts": {
+                        "type": "object",
+                        "properties": {
+                          "tests": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "passed": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "failed": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "cancelled": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "skipped": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "todo": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "tests",
+                          "passed",
+                          "failed",
+                          "cancelled",
+                          "skipped",
+                          "todo"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "suite_events": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "case_sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "status": {
+                              "enum": [
+                                "passed",
+                                "failed",
+                                "cancelled",
+                                "skipped",
+                                "todo"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "case_sha256",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "cases": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 20000,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "case_sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "status": {
+                              "enum": [
+                                "passed",
+                                "failed",
+                                "cancelled",
+                                "skipped",
+                                "todo"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "case_sha256",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "counts",
+                      "cases",
+                      "suite_events"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "exit_code": {
+                  "type": "integer"
+                },
+                "termination_signal": {
+                  "type": "string",
+                  "pattern": "^[A-Z0-9]+$",
+                  "maxLength": 32
+                }
+              },
+              "required": [
+                "selected_files",
+                "evidence_sha256",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "database_cleanup_verified": {
+            "type": "boolean"
+          },
+          "evidence_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "check_id",
+          "status",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1024
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160,
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+      },
+      "minItems": 0,
+      "maxItems": 1024,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "format",
+    "assurance_level",
+    "repository",
+    "base_commit",
+    "head_commit",
+    "workspace_sha256",
+    "status",
+    "scope",
+    "checks",
+    "blockers"
+  ],
+  "additionalProperties": false
+}

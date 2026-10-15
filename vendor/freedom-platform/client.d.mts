@@ -30,6 +30,7 @@ export type Campaign = { "campaign_id": string; "title": string; "aggregate_vers
 export type ShareInput = { "channel": string; "share_url": string; "note"?: string };
 export type Share = { "share_id": string; "verification_status": "self_reported"; [key: string]: unknown };
 export type Work = { "work_item_id": string; "title": string; "aggregate_version": number; [key: string]: unknown };
+export type WorkPage = { "items": Array<Work>; "next_cursor": string | null };
 export type Dashboard = { [key: string]: unknown };
 export type GuildList = { "items": Array<Guild> };
 export type ProductList = { "items": Array<Product> };
@@ -37,45 +38,47 @@ export type StoreList = { "items": Array<Store> };
 export type ListingList = { "items": Array<Listing> };
 export type AcceptanceList = { "items": Array<Acceptance> };
 export type ProjectList = { "items": Array<Project> };
-export type CampaignList = { "items": Array<Campaign> };
+export type CampaignList = { "items": Array<Campaign>; "next_offset": number | null };
 export type WorkList = { "items": Array<Work> };
+export type CatalogPage = { "items": Array<Product>; "next_offset": number | null };
 export type TrackList = { "items": Array<{ [key: string]: unknown }> };
 export interface Operations {
- getProtocol: { response: Protocol; body: never };
- getHealth: { response: Health; body: never };
- login: { response: Session; body: Login };
- logout: { response: LoggedOut; body: Empty };
- getSession: { response: Session; body: never };
- getPositioning: { response: Positioning; body: never };
- savePositioning: { response: Profile; body: SavePositioning };
- listCareerTracks: { response: TrackList; body: never };
- listGuilds: { response: GuildList; body: never };
- joinGuild: { response: Membership; body: Empty };
- leaveGuild: { response: Membership; body: Empty };
- listSupplierProducts: { response: ProductList; body: never };
- createSupplierProduct: { response: Product; body: ProductInput };
- createSupplierOffer: { response: Product; body: OfferInput };
- listCatalog: { response: ProductList; body: never };
- listStores: { response: StoreList; body: never };
- createStore: { response: Store; body: StoreInput };
- listListings: { response: ListingList; body: never };
- createListing: { response: Listing; body: ListingInput };
- requestSupply: { response: Listing; body: SnapshotInput };
- listSupplyRequests: { response: AcceptanceList; body: never };
- decideSupplyRequest: { response: Acceptance; body: DecisionInput };
- listProjects: { response: ProjectList; body: never };
- importProject: { response: Project; body: ProjectInput };
- refreshProject: { response: Project; body: Empty };
- reviseProject: { response: Project; body: ProjectMetadata };
- listCampaigns: { response: CampaignList; body: never };
- createCampaign: { response: Campaign; body: CampaignInput };
- reviseCampaign: { response: Campaign; body: CampaignMetadata };
- recordShare: { response: Campaign; body: ShareInput };
- listWorks: { response: WorkList; body: never };
- getDashboard: { response: Dashboard; body: never };
+ getProtocol: { response: Protocol; body: never; query: never };
+ getHealth: { response: Health; body: never; query: never };
+ login: { response: Session; body: Login; query: never };
+ logout: { response: LoggedOut; body: Empty; query: never };
+ getSession: { response: Session; body: never; query: never };
+ getPositioning: { response: Positioning; body: never; query: never };
+ savePositioning: { response: Profile; body: SavePositioning; query: never };
+ listCareerTracks: { response: TrackList; body: never; query: never };
+ listGuilds: { response: GuildList; body: never; query: never };
+ joinGuild: { response: Membership; body: Empty; query: never };
+ leaveGuild: { response: Membership; body: Empty; query: never };
+ listSupplierProducts: { response: ProductList; body: never; query: never };
+ createSupplierProduct: { response: Product; body: ProductInput; query: never };
+ createSupplierOffer: { response: Product; body: OfferInput; query: never };
+ listCatalog: { response: CatalogPage; body: never; query: { "limit"?: number; "offset"?: number } };
+ listStores: { response: StoreList; body: never; query: never };
+ createStore: { response: Store; body: StoreInput; query: never };
+ listListings: { response: ListingList; body: never; query: never };
+ createListing: { response: Listing; body: ListingInput; query: never };
+ requestSupply: { response: Listing; body: SnapshotInput; query: never };
+ listSupplyRequests: { response: AcceptanceList; body: never; query: never };
+ decideSupplyRequest: { response: Acceptance; body: DecisionInput; query: never };
+ listProjects: { response: ProjectList; body: never; query: never };
+ importProject: { response: Project; body: ProjectInput; query: never };
+ refreshProject: { response: Project; body: Empty; query: never };
+ reviseProject: { response: Project; body: ProjectMetadata; query: never };
+ listCampaigns: { response: CampaignList; body: never; query: { "limit"?: number; "offset"?: number } };
+ createCampaign: { response: Campaign; body: CampaignInput; query: never };
+ reviseCampaign: { response: Campaign; body: CampaignMetadata; query: never };
+ recordShare: { response: Campaign; body: ShareInput; query: never };
+ listWorks: { response: WorkList; body: never; query: never };
+ listWorksPage: { response: WorkPage; body: never; query: { "cursor"?: string; "scope"?: "all" | "open"; "search"?: string } };
+ getDashboard: { response: Dashboard; body: never; query: never };
 }
 export interface ClientOptions {baseUrl:string;appOrigin?:string;fetcher?:typeof fetch;cookie?:string;csrfToken?:string;timeoutMs?:number}
-export interface CallOptions<B> {params?:Record<string,string>;body?:B;idempotencyKey?:string;version?:number}
+export interface CallOptions<B,Q=never> {params?:Record<string,string>;query?:Q;body?:B;idempotencyKey?:string;version?:number}
 export class PlatformError extends Error {status:number;code:string}
-export class PlatformClient {constructor(options:ClientOptions);call<K extends keyof Operations>(operationId:K,options?:CallOptions<Operations[K]['body']>):Promise<Operations[K]['response']>;assertCompatible():Promise<Protocol>;static loginDemo(options:ClientOptions & {email:string;password:string}):Promise<PlatformClient>}
+export class PlatformClient {constructor(options:ClientOptions);call<K extends keyof Operations>(operationId:K,options?:CallOptions<Operations[K]['body'],Operations[K]['query']>):Promise<Operations[K]['response']>;assertCompatible():Promise<Protocol>;static loginDemo(options:ClientOptions & {email:string;password:string}):Promise<PlatformClient>}
 export const protocol: {version:string;revision:string;operations:Record<string,unknown>};

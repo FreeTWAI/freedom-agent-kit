@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freetwai.com/contracts/governance/release-trust/v1",
+  "title": "Freedom release-trust development schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "freedom.release-trust/v1"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._+-]*$"
+    },
+    "environment": {
+      "enum": [
+        "fixture",
+        "staging",
+        "production"
+      ]
+    },
+    "issued_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24,
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24,
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kid": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+          },
+          "publisher_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+          },
+          "source_repository": {
+            "enum": ["FreeTWAI/freedom-platform", "FreeTWAI-AI/freedom-platform"]
+          },
+          "purpose": {
+            "const": "freedom.release-set"
+          },
+          "public_jwk": {
+            "type": "object",
+            "properties": {
+              "kty": {
+                "const": "OKP"
+              },
+              "crv": {
+                "const": "Ed25519"
+              },
+              "x": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{43}$"
+              }
+            },
+            "required": [
+              "kty",
+              "crv",
+              "x"
+            ],
+            "additionalProperties": false
+          },
+          "not_before": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "not_after": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          }
+        },
+        "required": [
+          "kid",
+          "publisher_id",
+          "source_repository",
+          "purpose",
+          "public_jwk",
+          "not_before",
+          "not_after"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 32
+    },
+    "releases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "manifest_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "policy_revision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._+-]*$"
+          },
+          "state": {
+            "enum": [
+              "supported",
+              "withdrawn"
+            ]
+          }
+        },
+        "required": [
+          "manifest_sha256",
+          "policy_revision",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1024
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "environment",
+    "issued_at",
+    "expires_at",
+    "keys",
+    "releases"
+  ],
+  "additionalProperties": false
+}

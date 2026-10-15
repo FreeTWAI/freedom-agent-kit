@@ -1,6 +1,15 @@
 import { protocol, protocolSha256 } from './protocol.mjs';
 import { assertShape } from './schema.mjs';
 export { protocol } from './protocol.mjs';
+const objectConstructorSource=Function.prototype.toString.call(Object);
+function isPlainRecord(value){
+ if(value===null||typeof value!=='object')return false;
+ const prototype=Object.getPrototypeOf(value);
+ if(prototype===null||prototype===Object.prototype)return true;
+ if(Object.getPrototypeOf(prototype)!==null)return false;
+ const constructor=Object.getOwnPropertyDescriptor(prototype,'constructor')?.value;
+ return typeof constructor==='function'&&Function.prototype.toString.call(constructor)===objectConstructorSource;
+}
 export class PlatformError extends Error {
  constructor(problem){super(problem.detail);this.name='PlatformError';this.status=problem.status;this.code=problem.code;}
 }
@@ -16,13 +25,24 @@ export class PlatformClient {
  async assertCompatible(){
   const info=await this.call('getProtocol');if(info.protocol_sha256!==protocolSha256)throw new TypeError('Platform protocol differs from the pinned contract; update deliberately');this.#compatible=true;return info;
  }
- async call(operationId,{params={},body,idempotencyKey,version}={}){
+ async call(operationId,options={}){
+  const {body,idempotencyKey,version}=options;
+  const query=Object.hasOwn(options,'query')?options.query:undefined;
+  const ownParams=Object.hasOwn(options,'params')?options.params:undefined,params=ownParams===undefined?{}:ownParams;
   const op=Object.hasOwn(protocol.operations,operationId)?protocol.operations[operationId]:null;if(!op)throw new TypeError('Unknown operation');
   if(operationId==='login')throw new TypeError('Use loginDemo for loopback fixtures; browser auth stays in Platform');
   if(op.body)assertShape(body??{},protocol.schemas[op.body],protocol.schemas);else if(body!==undefined)throw new TypeError('GET operation cannot have a body');
+  if(!isPlainRecord(params))throw new TypeError('Path parameters must be a plain object');
   const expected=[...op.path.matchAll(/\{([^}]+)\}/g)].map(m=>m[1]);
   if(Object.keys(params).some(k=>!expected.includes(k)))throw new TypeError('Unknown path parameter');
-  let path=op.path;for(const key of expected){const value=params[key];const pattern=key==='id'?/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i:/^[a-z][a-z0-9_]{1,100}$/;if(typeof value!=='string'||!pattern.test(value))throw new TypeError('Invalid path identifier');path=path.replace(`{${key}}`,encodeURIComponent(value));}
+  let path=op.path;for(const key of expected){const value=Object.hasOwn(params,key)?params[key]:undefined;const pattern=key==='id'?/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i:/^[a-z][a-z0-9_]{1,100}$/;if(typeof value!=='string'||!pattern.test(value))throw new TypeError('Invalid path identifier');path=path.replace(`{${key}}`,encodeURIComponent(value));}
+  if(query!==undefined&&!isPlainRecord(query))throw new TypeError('Query parameters must be a plain object');
+  const expectedQuery=new Map((op.query??[]).map(item=>[item.name,item]));
+  if(!op.query&&query!==undefined)throw new TypeError('Operation does not accept query parameters');
+  if(Object.keys(query??{}).some(name=>!expectedQuery.has(name)))throw new TypeError('Unknown query parameter');
+  const search=new URLSearchParams();
+  for(const [name,item]of expectedQuery){const value=query!==undefined&&Object.hasOwn(query,name)?query[name]:undefined;if(value===undefined){if(item.required)throw new TypeError('Required query parameter missing');continue;}assertShape(value,item.schema,protocol.schemas);search.set(name,String(value));}
+  if(search.size)path+='?'+search.toString();
   if(op.idempotent&&!/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey??''))throw new TypeError('Explicit Idempotency-Key required; reuse it only with the same request');
   if(op.concurrency==='required'&&version===undefined)throw new TypeError('Expected version required');
   if(version!==undefined&&(!Number.isSafeInteger(version)||version<1))throw new TypeError('Expected version must be a positive safe integer');

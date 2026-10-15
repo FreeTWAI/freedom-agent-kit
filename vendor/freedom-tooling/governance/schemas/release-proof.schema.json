@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://freetwai.com/contracts/governance/release-proof/v1",
+  "title": "Freedom release-proof development schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "freedom.release-proof/v1"
+    },
+    "algorithm": {
+      "const": "Ed25519"
+    },
+    "purpose": {
+      "const": "freedom.release-set"
+    },
+    "publisher_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+    },
+    "kid": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
+    }
+  },
+  "required": [
+    "format",
+    "algorithm",
+    "purpose",
+    "publisher_id",
+    "kid",
+    "manifest_sha256",
+    "signature"
+  ],
+  "additionalProperties": false
+}

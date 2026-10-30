@@ -18,21 +18,84 @@
 
 共用 Platform protocol 與可供不同 AI CLI 呼叫的會員狀態工具。中央會員、工作、定位、公會都由 `freedom-platform` 保存；此 repo 沒有另一個資料庫。
 
+## Core Modules
+
+The repository is structured to provide a common protocol and status entry points for different AI tools:
+
+- **`src/cli.mjs`**: The local demonstration CLI. It reads the member's workspace status and exits, providing a testable entry point without storing session state.
+- **`src/index.mjs`**: Central workspace assembly. It imports the shared member-workspace implementation, running read operations without leaking session envelopes.
+- **`packages/client/`**: Re-exports a pinned version of the central `PlatformClient` from `freedom-platform`.
+- **`packages/protocol/`**: Re-exports the pinned central protocol DTOs and interfaces.
+- **`adapters/`**: Examples and adapters for different AI CLIs (e.g., Claude, Codex, Grok). They consume the output of the local demo CLI.
+- **`mcp/freedom-work-server/`**: A placeholder for the Model Context Protocol (MCP) server integration, currently documenting limitations and pending agent device-flow integrations.
+
+## API Reference
+
+### `PlatformClient` (from `packages/client/index.mjs`)
+A client wrapper for the central platform APIs.
+- **`PlatformClient.loginDemo({ baseUrl, email, password })`**: Authenticates a local demo account and returns an authorized client instance. *Note: Only accepts explicit local test accounts.*
+- **`client.call(endpoint, { body })`**: Calls a platform endpoint. Used internally and for `logout`.
+
+### `loadMemberWorkspace(client)` (from `src/index.mjs`)
+Fetches and aggregates the current workspace state for a given member.
+- **Arguments**: An authorized `PlatformClient` instance.
+- **Returns**: A JSON-serializable object containing preview read operations (e.g., identity, selected guild, work items). Omits session credentials from the output.
+
+## Usage Examples
+
+### CLI Usage
+
 ```sh
+# Install dependencies
 npm ci
+
+# Run test suite
 npm test
+
+# Execute local demo CLI
 node src/cli.mjs http://127.0.0.1:4310/api/v1 maker
 ```
 
-上例只允許明確的本機示範帳號。會讀取會員狀態後登出；不輸出 cookie／CSRF、不认領工作、不發出付款或外部動作。不能拿此 demo 登入方法繞過 Cloudflare Access。真實 Agent device flow、短效 ExecutionGrant、MCP server 仍待實作。
+The CLI only allows explicit local demonstration accounts. It reads the member status and logs out immediately. It does not output cookies or CSRF tokens, claim tasks, issue payments, or perform external actions. This demo login method cannot bypass Cloudflare Access. Real Agent device flow, short-lived ExecutionGrant, and MCP servers are pending implementation.
 
-`packages/client`／`packages/protocol` 只重新匯出 `vendor/freedom-platform` 的固定版本。`contracts.lock.json` 記錄來源 SHA 與 bundle digest；用 `node scripts/verify-contracts.mjs --remote` 核對。
+### Programmatic Usage (Node.js)
 
-供應協定與變更都在 [freedom-platform](https://github.com/FreeTWAI/freedom-platform)；不要在此手改 vendor。不同 AI 工具消費相同 DTO，不各建任務真相。
+```javascript
+import { PlatformClient } from './packages/client/index.mjs';
+import { loadMemberWorkspace } from './src/index.mjs';
 
-程式碼授權尚未指定（manifest 為 NOASSERTION）；公開 source 不代表已授予額外授權。
+async function fetchDemoWorkspace() {
+  const baseUrl = 'http://127.0.0.1:4310/api/v1';
+  let client;
 
-## Shared member workspace
+  try {
+    // 1. Authenticate with a local demo account
+    client = await PlatformClient.loginDemo({
+      baseUrl,
+      email: 'maker@local.test',
+      password: 'freedom-local-demo'
+    });
+
+    // 2. Fetch workspace state using the shared central implementation
+    const workspace = await loadMemberWorkspace(client);
+    console.log('Workspace State:', JSON.stringify(workspace, null, 2));
+
+  } catch (error) {
+    console.error('Error fetching workspace:', error.message);
+  } finally {
+    // 3. Ensure session is cleanly closed
+    if (client) {
+      await client.call('logout', { body: {} });
+    }
+  }
+}
+
+fetchDemoWorkspace();
+```
+
+## Shared Member Workspace and Source Verification
+
+`packages/client` and `packages/protocol` only re-export fixed versions from `vendor/freedom-platform`. `contracts.lock.json` records the source SHA and bundle digest; verify it with `node scripts/verify-contracts.mjs --remote`.
 
 `src/index.mjs` imports the central member-workspace implementation from `vendor/freedom-libraries`. It executes the existing five preview read operations and excludes the session envelope. The preview contract is pinned separately; its bounded Work page operation does not change the complete legacy Work list used by this loader. `consumer-libraries.lock.json` preserves the shared library's separate exact source commit and bytes; this lock does not approve a release or prove runtime coverage.
 
@@ -45,3 +108,5 @@ node scripts/verify-consumer-libraries.mjs FreeTWAI/freedom-agent-kit EXPECTED_P
 The verifier accepts the current `FreeTWAI` repository identity while preserving the historical identity recorded in the library lock. Use that library's independently selected source SHA, not the preview bundle's source SHA.
 
 Once that exact source is publicly available, `--remote` can replace `--source-root /path/to/freedom-platform`. Local source checks use committed Git objects, not uncommitted working-tree files.
+
+All supply protocols and changes reside in [freedom-platform](https://github.com/FreeTWAI/freedom-platform); do not manually modify vendor files here. Different AI tools consume the same DTOs without creating individual task truths. Code license is unassigned (manifest is NOASSERTION); open source visibility does not grant extra permissions.

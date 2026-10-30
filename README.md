@@ -18,6 +18,26 @@
 
 共用 Platform protocol 與可供不同 AI CLI 呼叫的會員狀態工具。中央會員、工作、定位、公會都由 `freedom-platform` 保存；此 repo 沒有另一個資料庫。
 
+## Core Modules
+
+*   `src/cli.mjs`: The CLI tool for reading member status locally via demo accounts.
+*   `packages/client/`: Re-exports `PlatformClient` and `PlatformError` from the pinned `vendor/freedom-platform/client.mjs`.
+*   `packages/protocol/`: Re-exports `protocol` types/utilities from `vendor/freedom-platform/protocol.mjs`.
+*   `adapters/`: Shared CLI adapters (e.g., `claude-cli`, `codex-cli`, `grok-cli`) that leverage the central `loadMemberWorkspace` implementation.
+*   `mcp/`: Currently a placeholder for future MCP transport and agent integration.
+
+## API Specifications
+
+*   **`loadMemberWorkspace(client)`**
+    *   **Exported by**: `src/index.mjs`
+    *   **Arguments**: `client` - An authenticated `PlatformClient` instance.
+    *   **Returns**: A promise that resolves to the canonical member workspace object (excluding session secrets/credentials like CSRF tokens). Includes data from `getSession`, `getDashboard`, `listWorks`, `getPositioning`, and `listGuilds`.
+    *   **Behavior**: Executes the five preview read operations via the central implementation. Omits sensitive state (e.g., tokens) and explicitly sets `agent_execution_grant: false`. Will reject on session expiration or unexpected API shapes.
+
+## Usage Examples
+
+### Local Demo CLI
+
 ```sh
 npm ci
 npm test

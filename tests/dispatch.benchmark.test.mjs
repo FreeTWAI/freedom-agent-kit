@@ -60,3 +60,45 @@ test('benchmark platform client call overhead', async () => {
   assert(end - start >= delay);
   assert(totalOverhead > 0);
 });
+
+test('concurrent client calls deduplicate assertCompatible fetches', async () => {
+  let callCount = 0;
+  const mockFetch = async (url) => {
+    callCount++;
+    await new Promise(resolve => setTimeout(resolve, 20)); // latency to allow concurrency
+    let responseBody = {};
+    if (url.includes('protocol')) {
+      responseBody = { protocol: 'freedom.preview/v1', revision: '1', protocol_sha256: '41378c3b723f739cefdf8c53a82238b1e5d69cc13cdbf63b33a80d8080c807b2', operations: [], authentication: 'member_session_csrf', external_job_execution: false, public_checkout: false };
+    }
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: {
+        getReader: () => {
+          let done = false;
+          return {
+            read: async () => {
+              if (done) return { done: true };
+              done = true;
+              return { done: false, value: new TextEncoder().encode(JSON.stringify(responseBody)) };
+            },
+            cancel: async () => {}
+          };
+        }
+      }
+    };
+  };
+
+  const client = new PlatformClient({ baseUrl: 'http://127.0.0.1/api/v1', fetcher: mockFetch });
+
+  // Make multiple concurrent calls requiring compatibility assertion
+  await Promise.all([
+    client.assertCompatible(),
+    client.assertCompatible(),
+    client.assertCompatible()
+  ]);
+
+  // If deduplication works, fetch should only have been called once for getProtocol
+  assert.equal(callCount, 1);
+});

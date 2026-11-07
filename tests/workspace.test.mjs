@@ -9,6 +9,26 @@ test('read failure propagates without creating fake empty work or hiding expired
  await assert.rejects(loadMemberWorkspace({call:async()=>({})}),/Incompatible/);
 });
 
+test('loadMemberWorkspace throws when individual fetch properties are missing from responses',async()=>{
+ await assert.rejects(loadMemberWorkspace({call:async(id)=>{
+    if (id === 'getSession') return { user: null };
+    return { items: [] };
+ }}),/Incompatible Platform list response/);
+
+ await assert.rejects(loadMemberWorkspace({call:async(id)=>{
+    if (id === 'getSession') return { user: { user_id: 'user-1' } };
+    if (id === 'listWorks') return { items: null };
+    return { items: [] };
+ }}),/Incompatible Platform list response/);
+
+ await assert.rejects(loadMemberWorkspace({call:async(id)=>{
+    if (id === 'getSession') return { user: { user_id: 'user-1' } };
+    if (id === 'listWorks') return { items: [] };
+    if (id === 'listGuilds') return { items: null };
+    return { items: [] };
+ }}),/Incompatible Platform list response/);
+});
+
 test('entrypoint uses the separately pinned central workspace implementation', async () => {
  const shared=await import('../vendor/freedom-libraries/packages/sdk/member-workspace.mjs');
  assert.equal(loadMemberWorkspace,shared.loadMemberWorkspace);
